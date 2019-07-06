@@ -1,30 +1,33 @@
 import numpy as np
 import pandas as pd
 from keras.models import Model
+from keras.models import Sequential
+from keras import regularizers
+from keras import optimizers
 from keras.layers import Input, Dense, Embedding, SpatialDropout1D, Dropout, add, concatenate
-from keras.layers import LSTM, Bidirectional, GlobalMaxPooling1D, GlobalAveragePooling1D
+from keras.layers import LSTM, Bidirectional, GlobalMaxPooling1D, GlobalAveragePooling1D,GRU,Conv1D, MaxPooling1D
 from keras.preprocessing import text, sequence
 from keras.callbacks import LearningRateScheduler
 from keras.losses import binary_crossentropy
 from keras import backend as K
 from pyvi import ViTokenizer
 import re
+from keras.models import load_model
 from sklearn.model_selection import train_test_split
-import statistics
+from statistics import *
 EMBEDDING_FILES = [
-    # '../input/fasttext-crawl-300d-2m/crawl-300d-2M.vec',
-    # 'D:/NLP/crawl-300d-2M.vec/crawl-300d-2M.vec',
-    # 'D:/NLP/Toxic_Comment_Vie/cc.vi.300.vec/cc.vi.300.vec',
     'cc.vi.300.vec/cc.vi.300.vec'
-    # '../input/fasttext/glove.840B.300d.txt'
-]
+    # 'glove6b300dtxt/glove.6B.300d.txt',
+    # 'crawl-300d-2M.vec/crawl-300d-2M.vec'
 
+]
+num_filters = 64
 BATCH_SIZE = 256
 LSTM_UNITS = 128
 DENSE_HIDDEN_UNITS = 4 * LSTM_UNITS
 # EPOCHS = 4
 MAX_LEN = 100
-
+weight_decay = 1e-4
 # embedding---------------------------
 def get_coefs(word, *arr):
     return word, np.asarray(arr, dtype='float32')
@@ -52,25 +55,62 @@ def build_matrix(word_index, path):
 #     return binary_crossentropy(K.reshape(y_true[:,0],(-1,1)), y_pred) * y_true[:,1]
 
 
+# def build_model(embedding_matrix):
+#     words = Input(shape=(MAX_LEN,))
+#     x = Embedding(*embedding_matrix.shape, weights=[embedding_matrix], trainable=False)(words)
+#     x = SpatialDropout1D(0.3)(x)
+#     x = Bidirectional(LSTM(LSTM_UNITS, return_sequences=True))(x) #lsrm 2 chiều
+#     x = Bidirectional(LSTM(LSTM_UNITS, return_sequences=True))(x)
+
+#     hidden = concatenate([
+#         GlobalMaxPooling1D()(x),
+#         GlobalAveragePooling1D()(x),
+#     ])
+#     hidden = add([hidden, Dense(DENSE_HIDDEN_UNITS, activation='relu')(hidden)])
+#     hidden = add([hidden, Dense(DENSE_HIDDEN_UNITS, activation='relu')(hidden)])
+#     result = Dense(1, activation='sigmoid')(hidden)
+#     # aux_result = Dense(num_aux_targets, activation='sigmoid')(hidden)
+    
+#     model = Model(inputs=words, outputs=[result])
+#     model.compile(loss=['binary_crossentropy'], optimizer='adam',metrics=['accuracy'])
+#     return model
+
+# def build_model(embedding_matrix):
+#     words = Input(shape=(MAX_LEN,))
+#     x = Embedding(*embedding_matrix.shape, weights=[embedding_matrix], trainable=False)(words)
+#     x = SpatialDropout1D(0.2)(x)
+#     x = Bidirectional(GRU(80, return_sequences=True))(x)
+#     avg_pool = GlobalAveragePooling1D()(x)
+#     max_pool = GlobalMaxPooling1D()(x)
+#     conc = concatenate([avg_pool, max_pool])
+#     outp = Dense(1, activation="sigmoid")(conc)
+    
+#     model = Model(inputs=words, outputs=[outp])
+#     model.compile(loss='binary_crossentropy',
+#                   optimizer='adam',
+#                   metrics=['accuracy'])
+
+#     return model
+
+
+
 def build_model(embedding_matrix):
     words = Input(shape=(MAX_LEN,))
-    x = Embedding(*embedding_matrix.shape, weights=[embedding_matrix], trainable=False)(words)
-    x = SpatialDropout1D(0.3)(x)
-    x = Bidirectional(LSTM(LSTM_UNITS, return_sequences=True))(x)
-    x = Bidirectional(LSTM(LSTM_UNITS, return_sequences=True))(x)
+    model = Sequential()
+    model.add(Embedding(*embedding_matrix.shape,weights=[embedding_matrix], trainable=False))
+    model.add(Conv1D(num_filters, 7, activation='relu', padding='same'))
+    model.add(MaxPooling1D(2))
+    model.add(Conv1D(num_filters, 7, activation='relu', padding='same'))
+    model.add(GlobalMaxPooling1D())
+    model.add(Dropout(0.3))
+    model.add(Dense(32, activation='relu', kernel_regularizer=regularizers.l2(weight_decay)))
+    model.add(Dense(1, activation='sigmoid'))  #multi-label (k-hot encoding)
 
-    hidden = concatenate([
-        GlobalMaxPooling1D()(x),
-        GlobalAveragePooling1D()(x),
-    ])
-    hidden = add([hidden, Dense(DENSE_HIDDEN_UNITS, activation='relu')(hidden)])
-    hidden = add([hidden, Dense(DENSE_HIDDEN_UNITS, activation='relu')(hidden)])
-    result = Dense(1, activation='sigmoid')(hidden)
-    # aux_result = Dense(num_aux_targets, activation='sigmoid')(hidden)
-    
-    model = Model(inputs=words, outputs=[result])
-    model.compile(loss=['binary_crossentropy'], optimizer='adam',metrics=['accuracy'])
-    return model
+    adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+    model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
+
+    return model 
+
  #buil model---------------------------- 
 
 
@@ -144,6 +184,8 @@ xtest = sequence.pad_sequences(xtest, maxlen=MAX_LEN)
 embedding_matrix = np.concatenate(
     [build_matrix(tokenizer.word_index, f) for f in EMBEDDING_FILES], axis=-1)
 
+print("embedding_matrix",embedding_matrix)
+print("embedding_matrix",embedding_matrix.shape)
 model = build_model(embedding_matrix)
 model.fit(
     np.array(xtrain),

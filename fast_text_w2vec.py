@@ -1,3 +1,10 @@
+import gensim
+from gensim.models import Word2Vec
+from gensim.utils import simple_preprocess
+
+from gensim.models.keyedvectors import KeyedVectors
+
+
 import numpy as np
 import pandas as pd
 from keras.models import Model
@@ -15,13 +22,16 @@ import re
 from keras.models import load_model
 from sklearn.model_selection import train_test_split
 from statistics import *
-EMBEDDING_FILES = [
-    # '../input/fasttext-crawl-300d-2m/crawl-300d-2M.vec',
-    'D:/NLP/crawl-300d-2M.vec/crawl-300d-2M.vec',
-    # 'D:/NLP/Toxic_Comment_Vie/cc.vi.300.vec/cc.vi.300.vec',
-    # 'D:/NLP/Toxic_Comment_Vie/cc.vi.300.bin/cc.vi.300.bin',
-    # 'D:/NLP/glove6b300dtxt/glove.6B.300d.txt',
-]
+# EMBEDDING_FILES = [
+#     # '../input/fasttext-crawl-300d-2m/crawl-300d-2M.vec',
+#     'D:/NLP/crawl-300d-2M.vec/crawl-300d-2M.vec',
+#     # 'D:/NLP/Toxic_Comment_Vie/cc.vi.300.vec/cc.vi.300.vec',
+#     # 'D:/NLP/Toxic_Comment_Vie/cc.vi.300.bin/cc.vi.300.bin',
+#     # 'D:/NLP/glove6b300dtxt/glove.6B.300d.txt',
+# ]
+
+word_vectors = KeyedVectors.load_word2vec_format('baomoi.model.bin', binary=True)
+
 num_filters = 64
 BATCH_SIZE = 512
 LSTM_UNITS = 128
@@ -33,16 +43,16 @@ weight_decay = 1e-4
 # embedding---------------------------
 
 #load pre-train
-def get_coefs(word, *arr):
-    # print("word",word)
-    # print("arr",arr)
-    return word, np.asarray(arr, dtype='float32')
+# def get_coefs(word, *arr):
+#     # print("word",word)
+#     # print("arr",arr)
+#     return word, np.asarray(arr, dtype='float32')
 
 
-def load_embeddings(path):  
-    with open(path,encoding='utf-8') as f:
-        # print("sss",dict(get_coefs(*line.strip().split(' ')) for line in f))
-        return dict(get_coefs(*line.strip().split(' ')) for line in f)
+# def load_embeddings(path):  
+#     with open(path,encoding='utf-8') as f:
+#         # print("sss",dict(get_coefs(*line.strip().split(' ')) for line in f))
+#         return dict(get_coefs(*line.strip().split(' ')) for line in f)
 #load result của pre-train
 #     example {'-3.690e-02 -1.966e-01 -7.410e-02  1.753e-01  1.750e-02 -9.620e-02
 #   1.112e-01  1.287e-01 -1.403e-01  4.460e-02  1.364e-01 -2.050e-01
@@ -60,7 +70,7 @@ def build_matrix(word_index, path):
         print(word)
         print(i)
         try:
-            embedding_matrix[i] = embedding_index[word]  
+            embedding_matrix[i] = word_vectors[word]  
         except KeyError: #nếu từ ko có trong từ điển pre train  sẽ bỏ qua
             print("pass")
             pass
@@ -75,25 +85,25 @@ def build_matrix(word_index, path):
 #     return binary_crossentropy(K.reshape(y_true[:,0],(-1,1)), y_pred) * y_true[:,1]
 
 # LSTM
-# def build_model(embedding_matrix):
-#     words = Input(shape=(MAX_LEN,))
-#     x = Embedding(*embedding_matrix.shape, weights=[embedding_matrix], trainable=False)(words)
-#     x = SpatialDropout1D(0.3)(x)
-#     x = Bidirectional(LSTM(LSTM_UNITS, return_sequences=True))(x)
-#     x = Bidirectional(LSTM(LSTM_UNITS, return_sequences=True))(x)
+def build_model(embedding_matrix):
+    words = Input(shape=(MAX_LEN,))
+    x = Embedding(*embedding_matrix.shape, weights=[embedding_matrix], trainable=False)(words)
+    x = SpatialDropout1D(0.3)(x)
+    x = Bidirectional(LSTM(LSTM_UNITS, return_sequences=True))(x)
+    x = Bidirectional(LSTM(LSTM_UNITS, return_sequences=True))(x)
 
-#     hidden = concatenate([
-#         GlobalMaxPooling1D()(x),
-#         GlobalAveragePooling1D()(x),
-#     ])
-#     hidden = add([hidden, Dense(DENSE_HIDDEN_UNITS, activation='relu')(hidden)])
-#     hidden = add([hidden, Dense(DENSE_HIDDEN_UNITS, activation='relu')(hidden)])
-#     result = Dense(1, activation='sigmoid')(hidden)
-#     # aux_result = Dense(num_aux_targets, activation='sigmoid')(hidden)
+    hidden = concatenate([
+        GlobalMaxPooling1D()(x),
+        GlobalAveragePooling1D()(x),
+    ])
+    hidden = add([hidden, Dense(DENSE_HIDDEN_UNITS, activation='relu')(hidden)])
+    hidden = add([hidden, Dense(DENSE_HIDDEN_UNITS, activation='relu')(hidden)])
+    result = Dense(1, activation='sigmoid')(hidden)
+    # aux_result = Dense(num_aux_targets, activation='sigmoid')(hidden)
     
-#     model = Model(inputs=words, outputs=[result])
-#     model.compile(loss=['binary_crossentropy'], optimizer='adam',metrics=['accuracy'])
-#     return model
+    model = Model(inputs=words, outputs=[result])
+    model.compile(loss=['binary_crossentropy'], optimizer='adam',metrics=['accuracy'])
+    return model
 
 #   GRU
 # def build_model(embedding_matrix):
@@ -114,22 +124,22 @@ def build_matrix(word_index, path):
 #     return model
 
 # cnn
-def build_model(embedding_matrix):
-    words = Input(shape=(MAX_LEN,))
-    model = Sequential()
-    model.add(Embedding(*embedding_matrix.shape,weights=[embedding_matrix], trainable=False))
-    model.add(Conv1D(num_filters, 7, activation='relu', padding='same'))
-    model.add(MaxPooling1D(2))
-    model.add(Conv1D(num_filters, 7, activation='relu', padding='same'))
-    model.add(GlobalMaxPooling1D())
-    model.add(Dropout(0.3))
-    model.add(Dense(32, activation='relu', kernel_regularizer=regularizers.l2(weight_decay)))
-    model.add(Dense(1, activation='sigmoid'))  #multi-label (k-hot encoding)
+# def build_model(embedding_matrix):
+#     words = Input(shape=(MAX_LEN,))
+#     model = Sequential()
+#     model.add(Embedding(*embedding_matrix.shape,weights=[embedding_matrix], trainable=False))
+#     model.add(Conv1D(num_filters, 7, activation='relu', padding='same'))
+#     model.add(MaxPooling1D(2))
+#     model.add(Conv1D(num_filters, 7, activation='relu', padding='same'))
+#     model.add(GlobalMaxPooling1D())
+#     model.add(Dropout(0.3))
+#     model.add(Dense(32, activation='relu', kernel_regularizer=regularizers.l2(weight_decay)))
+#     model.add(Dense(1, activation='sigmoid'))  #multi-label (k-hot encoding)
 
-    adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
-    model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
+#     adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+#     model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
 
-    return model 
+#     return model 
 
 
  #buil model---------------------------- 
@@ -146,7 +156,7 @@ def preprocess(text):
         text = text.replace(happen, "vui")
     for sad in list_sad:          
         text = text.replace(sad, "buồn")
-#     text = ViTokenizer.tokenize(text)
+    text = ViTokenizer.tokenize(text)
     # emoticons = re.findall(r"(?:|;|=)(?:-)?(?:\)\(|D|P)", text)
     # text = re.sub(r"[\W]+", " ", text.lower()) + " ".join(emoticons).replace('-', '')
     # text = re.sub("\n", ' ', text)
@@ -189,12 +199,12 @@ for index,row in xtrain2.iterrows():
 
 
 X_train, X_test, y_train, y_test = train_test_split(xtrain, ytrain, test_size=0.2, random_state=42)
-# print("X_test",X_test) 
+print("X_train",X_train) 
 # X_train = xtrain
 
-tokenizer = text.Tokenizer()
-tokenizer.fit_on_texts(xtrain + xtest)  #tạo ra 1 từ điển tokenizer {'rất': 1, 'phẩm': 2, 'shop': 3, 'sản': 4,...}
-# tokenizer.fit_on_texts(xtrain)  #mã hóa 1 data train theo từ điển
+tokenizer = text.Tokenizer(split=" ")
+# tokenizer.fit_on_texts(xtrain + xtest)  #tạo ra 1 từ điển tokenizer {'rất': 1, 'phẩm': 2, 'shop': 3, 'sản': 4,...}
+tokenizer.fit_on_texts(X_train)  #mã hóa 1 data train theo từ điển
 print("tokenizer",tokenizer.word_index)
 xtrain = tokenizer.texts_to_sequences(X_train)
 print("xtrain",xtrain)
@@ -204,22 +214,22 @@ xtest = sequence.pad_sequences(xtest, maxlen=MAX_LEN)
 print("xtrain",xtrain)
 
 
-embedding_matrix = np.concatenate(
-    [build_matrix(tokenizer.word_index, f) for f in EMBEDDING_FILES], axis=-1)
+# embedding_matrix = np.concatenate(
+#     [build_matrix(tokenizer.word_index, f) for f in EMBEDDING_FILES], axis=-1)
 
-print("embedding_matrix",embedding_matrix)
-print("embedding_matrix",embedding_matrix.shape)
-model = build_model(embedding_matrix)
-model.fit(
-    np.array(xtrain),
-    np.array(y_train),
-    batch_size=BATCH_SIZE,
-    epochs=5,
-    validation_data=(np.array(xtest), np.array(y_test)), 
-    verbose=1
-    # tbCallBack = tf.keras.callbacks.TensorBoard(log_dir='./log', histogram_freq=0, write_graph=True, write_images=True)  # hiển thị tensorBoard
-    # callbacks=[LearningRateScheduler(lambda epoch: 1e-3 * (0.6 ** 1))]
-)
+# print("embedding_matrix",embedding_matrix)
+# print("embedding_matrix",embedding_matrix.shape)
+# model = build_model(embedding_matrix)
+# model.fit(
+#     np.array(xtrain),
+#     np.array(y_train),
+#     batch_size=BATCH_SIZE,
+#     epochs=5,
+#     validation_data=(np.array(xtest), np.array(y_test)), 
+#     verbose=1
+#     # tbCallBack = tf.keras.callbacks.TensorBoard(log_dir='./log', histogram_freq=0, write_graph=True, write_images=True)  # hiển thị tensorBoard
+#     # callbacks=[LearningRateScheduler(lambda epoch: 1e-3 * (0.6 ** 1))]
+# )
 # model.save("model.h5")
 # model = load_model("model.h5")
 # predict = model.predict(np.array(xtest))
