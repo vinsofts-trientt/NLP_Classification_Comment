@@ -1,6 +1,6 @@
 train_000000
 "Dung dc sp tot cam on 
-shop Đóng gói sản phẩm rất đẹp và chắc chắn Chất lượng sản phẩm tuyệt vời"
+shop đóng gói sản phẩm rất đẹp và chắc chắn chất lượng sản phẩm tuyệt vời 😊 :))"
 0
 
 train_000001
@@ -9480,7 +9480,7 @@ train_002276
 
 train_002277
 "Không hài lòng lắm."
-0
+1
 
 train_002278
 "Đã nhận được sim và đăng ký thành công V90. Giao hàng rất nhanh. Đặt hôm trước hôm sau đã có rồi. Cực kỳ hài lòng. Mạng 4G của viettel thì khỏi chê vào đâu được. Cám ơn shop."
@@ -65481,7 +65481,7 @@ train_015730
 1
 
 train_015731
-"lần này shop giao hàng nhanhnguyen seal"
+"lần này shop giao hàng nhanh nguyen seal"
 0
 
 train_015732

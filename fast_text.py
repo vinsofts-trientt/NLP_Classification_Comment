@@ -51,18 +51,20 @@ def load_embeddings(path):
 #   8.420e-02 -5.160e-02  7.180e-02  2.443e-01  1.418e-01 -1.560e-01
 #  -6.380e-02  2.805e-01 -2.453e-01 -1.450e-02  6.710e-02  1.037e-01','xa'}
 
-def build_matrix(word_index, path):
+def build_matrix(word_index, path):  #embedding các từ trong từ điển
     embedding_index = load_embeddings(path)
     # print("embedding_index",embedding_index.shape)
     # print("vọngthực",embedding_index['vui_vẻ'])
     embedding_matrix = np.zeros((len(word_index) + 1, 300))  #Tạo ra 1 mảng matrix bằng 0 vs shape = (len(word_index) + 1, 300)
+    # print("embedding_matrix",embedding_matrix.shape)
     for word, i in word_index.items():
-        print(word)
+        # print(word)
         print(i)
         try:
+            print("embedding_index[word]",embedding_index[word].shape)
             embedding_matrix[i] = embedding_index[word]  
         except KeyError: #nếu từ ko có trong từ điển pre train  sẽ bỏ qua
-            print("pass")
+            # print("pass")
             pass
     return embedding_matrix
 
@@ -143,10 +145,10 @@ def preprocess(text):
     "👌","=))","😅","👍","👍🏻","💕","❤","👏","💟","<3",":D",":P","^_^","😉","✌️"]
     list_sad = ["😡","🤔","🤨","😐","😏","😒","😶","🙄","😌","😔","🤕","🤒","👿","🤬","😤",'😫',"😩","😭",":(","😈","-_-","👎"]
     for happen in list_happen:          
-        text = text.replace(happen, "vui")
+        text = text.replace(happen, " vui")
     for sad in list_sad:          
-        text = text.replace(sad, "buồn")
-#     text = ViTokenizer.tokenize(text)
+        text = text.replace(sad, " buồn")
+    text = ViTokenizer.tokenize(text)
     # emoticons = re.findall(r"(?:|;|=)(?:-)?(?:\)\(|D|P)", text)
     # text = re.sub(r"[\W]+", " ", text.lower()) + " ".join(emoticons).replace('-', '')
     # text = re.sub("\n", ' ', text)
@@ -195,7 +197,7 @@ X_train, X_test, y_train, y_test = train_test_split(xtrain, ytrain, test_size=0.
 tokenizer = text.Tokenizer()
 tokenizer.fit_on_texts(xtrain + xtest)  #tạo ra 1 từ điển tokenizer {'rất': 1, 'phẩm': 2, 'shop': 3, 'sản': 4,...}
 # tokenizer.fit_on_texts(xtrain)  #mã hóa 1 data train theo từ điển
-print("tokenizer",tokenizer.word_index)
+# print("tokenizer",tokenizer.word_index)
 xtrain = tokenizer.texts_to_sequences(X_train)
 print("xtrain",xtrain)
 xtest = tokenizer.texts_to_sequences(X_test)
@@ -207,19 +209,21 @@ print("xtrain",xtrain)
 embedding_matrix = np.concatenate(
     [build_matrix(tokenizer.word_index, f) for f in EMBEDDING_FILES], axis=-1)
 
-print("embedding_matrix",embedding_matrix)
-print("embedding_matrix",embedding_matrix.shape)
-model = build_model(embedding_matrix)
-model.fit(
-    np.array(xtrain),
-    np.array(y_train),
-    batch_size=BATCH_SIZE,
-    epochs=5,
-    validation_data=(np.array(xtest), np.array(y_test)), 
-    verbose=1
-    # tbCallBack = tf.keras.callbacks.TensorBoard(log_dir='./log', histogram_freq=0, write_graph=True, write_images=True)  # hiển thị tensorBoard
-    # callbacks=[LearningRateScheduler(lambda epoch: 1e-3 * (0.6 ** 1))]
-)
+print("*embedding_matrix.shape",*embedding_matrix.shape)
+
+# print("embedding_matrix",embedding_matrix)
+# print("embedding_matrix",embedding_matrix.shape)
+# model = build_model(embedding_matrix)
+# model.fit(
+#     np.array(xtrain),
+#     np.array(y_train),
+#     batch_size=BATCH_SIZE,
+#     epochs=5,
+#     validation_data=(np.array(xtest), np.array(y_test)), 
+#     verbose=1
+#     # tbCallBack = tf.keras.callbacks.TensorBoard(log_dir='./log', histogram_freq=0, write_graph=True, write_images=True)  # hiển thị tensorBoard
+#     # callbacks=[LearningRateScheduler(lambda epoch: 1e-3 * (0.6 ** 1))]
+# )
 # model.save("model.h5")
 # model = load_model("model.h5")
 # predict = model.predict(np.array(xtest))

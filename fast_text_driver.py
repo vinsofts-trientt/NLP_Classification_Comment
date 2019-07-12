@@ -55,25 +55,25 @@ def build_matrix(word_index, path):
 #     return binary_crossentropy(K.reshape(y_true[:,0],(-1,1)), y_pred) * y_true[:,1]
 
 
-# def build_model(embedding_matrix):
-#     words = Input(shape=(MAX_LEN,))
-#     x = Embedding(*embedding_matrix.shape, weights=[embedding_matrix], trainable=False)(words)
-#     x = SpatialDropout1D(0.3)(x)
-#     x = Bidirectional(LSTM(LSTM_UNITS, return_sequences=True))(x) #lsrm 2 chiều
-#     x = Bidirectional(LSTM(LSTM_UNITS, return_sequences=True))(x)
+def build_model(embedding_matrix):
+    words = Input(shape=(MAX_LEN,))
+    x = Embedding(*embedding_matrix.shape, weights=[embedding_matrix], trainable=False)(words)
+    x = SpatialDropout1D(0.3)(x)
+    x = Bidirectional(LSTM(LSTM_UNITS, return_sequences=True))(x) #lstm 2 chiều
+    x = Bidirectional(LSTM(LSTM_UNITS, return_sequences=True))(x)
 
-#     hidden = concatenate([
-#         GlobalMaxPooling1D()(x),
-#         GlobalAveragePooling1D()(x),
-#     ])
-#     hidden = add([hidden, Dense(DENSE_HIDDEN_UNITS, activation='relu')(hidden)])
-#     hidden = add([hidden, Dense(DENSE_HIDDEN_UNITS, activation='relu')(hidden)])
-#     result = Dense(1, activation='sigmoid')(hidden)
-#     # aux_result = Dense(num_aux_targets, activation='sigmoid')(hidden)
+    hidden = concatenate([
+        GlobalMaxPooling1D()(x),
+        GlobalAveragePooling1D()(x),
+    ])
+    hidden = add([hidden, Dense(DENSE_HIDDEN_UNITS, activation='relu')(hidden)])
+    hidden = add([hidden, Dense(DENSE_HIDDEN_UNITS, activation='relu')(hidden)])
+    result = Dense(1, activation='sigmoid')(hidden)
+    # aux_result = Dense(num_aux_targets, activation='sigmoid')(hidden)
     
-#     model = Model(inputs=words, outputs=[result])
-#     model.compile(loss=['binary_crossentropy'], optimizer='adam',metrics=['accuracy'])
-#     return model
+    model = Model(inputs=words, outputs=[result])
+    model.compile(loss=['binary_crossentropy'], optimizer='adam',metrics=['accuracy'])
+    return model
 
 # def build_model(embedding_matrix):
 #     words = Input(shape=(MAX_LEN,))
@@ -94,22 +94,22 @@ def build_matrix(word_index, path):
 
 
 
-def build_model(embedding_matrix):
-    words = Input(shape=(MAX_LEN,))
-    model = Sequential()
-    model.add(Embedding(*embedding_matrix.shape,weights=[embedding_matrix], trainable=False))
-    model.add(Conv1D(num_filters, 7, activation='relu', padding='same'))
-    model.add(MaxPooling1D(2))
-    model.add(Conv1D(num_filters, 7, activation='relu', padding='same'))
-    model.add(GlobalMaxPooling1D())
-    model.add(Dropout(0.3))
-    model.add(Dense(32, activation='relu', kernel_regularizer=regularizers.l2(weight_decay)))
-    model.add(Dense(1, activation='sigmoid'))  #multi-label (k-hot encoding)
+# def build_model(embedding_matrix):
+#     words = Input(shape=(MAX_LEN,))
+#     model = Sequential()
+#     model.add(Embedding(*embedding_matrix.shape,weights=[embedding_matrix], trainable=False))
+#     model.add(Conv1D(num_filters, 7, activation='relu', padding='same'))
+#     model.add(MaxPooling1D(2))
+#     model.add(Conv1D(num_filters, 7, activation='relu', padding='same'))
+#     model.add(GlobalMaxPooling1D())
+#     model.add(Dropout(0.3))
+#     model.add(Dense(32, activation='relu', kernel_regularizer=regularizers.l2(weight_decay)))
+#     model.add(Dense(1, activation='sigmoid'))  #multi-label (k-hot encoding)
 
-    adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
-    model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
+#     adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+#     model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
 
-    return model 
+#     return model 
 
  #buil model---------------------------- 
 
@@ -191,7 +191,7 @@ model.fit(
     np.array(xtrain),
     np.array(y_train),
     batch_size=BATCH_SIZE,
-    epochs=50,
+    epochs=5,
     validation_data=(np.array(xtest), np.array(y_test)), 
     verbose=1
     # tbCallBack = tf.keras.callbacks.TensorBoard(log_dir='./log', histogram_freq=0, write_graph=True, write_images=True)  # hiển thị tensorBoard
